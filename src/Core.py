@@ -5,11 +5,11 @@ from lab_devices import get_device
 from os import remove
 
 
-class Backend:
-    def __init__(self, name_config:str, console=None):
+class Link:
+
+    def __init__(self, name_config: str, console = None):
         self.console = console
         self.config_name = name_config.strip()
-
         self.device_mapping = [
             'TDK-Lambda Zup (1)',
             'TDK-Lambda Zup (2)',
@@ -17,34 +17,30 @@ class Backend:
             'Agilent N3300',
             'Test'
         ]
-        print(self._get_name_devices(self.config_name))
         self.devices = []
         self.test_device = None
         self.config = self._load_config()
         self.commands = self._load_commands()
-
         self.status_flag = False
-
-        self.name_file_report = ('./Report_info/' + 'Report_'
-                                 + datetime.now().isoformat()[:19].replace(':', '_')
-                                 + '.txt')
+        self.name_file_report = (
+                '../Report_info/' + 'Report_'
+                + datetime.now().isoformat()[:19].replace(':', '_')
+                + '.txt')
         self.f_report = open(self.name_file_report, 'a')
         self.flag_empty_file_report = True
 
     def _get_name_devices(self, config_name):
-        return [conf[0] for conf in self._load_csv(config_name + ' config_dev.csv')]
+        # getting device names from the test configuration
+        return [conf[0]
+                for conf
+                in self._load_csv(config_name + ' config_dev.csv')]
 
     def _init_devices(self):
-        """
-        Инициализация устройств на основе конфигурации
-        """
+        # initialization using device
         self.print_console('-Проверка подключения устройств:')
-
         self.devices.clear()
 
         status_devices = []
-
-
         for mdl_id in range(len(self.device_mapping)):
             try:
                 self.devices.append(get_device(self.device_mapping[mdl_id])(port=self.config[mdl_id+1][1],
@@ -57,7 +53,6 @@ class Backend:
                 status_devices.append(False)
                 self.print_console(f'\t{mdl_id + 1}) {self.device_mapping[mdl_id]} --- '
                                    f'Данного COM порта не существует')
-
         self.status_flag = all(status_devices)
         return status_devices
 
@@ -160,11 +155,12 @@ class Backend:
         return True
 
     def __del__(self):
-        self.devices.clear()
+        if self.devices:
+            self.devices.clear()
         self.f_report.close()
         if self.flag_empty_file_report:
             remove(self.name_file_report)
 
 if __name__ == '__main__':
-    a = Backend()
+    a = Link()
     print(a._init_devices())

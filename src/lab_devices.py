@@ -2,11 +2,17 @@ import serial
 from time import sleep
 
 class ZupDevice:
+    '''
+    A class for providing PC communication with a connected TDK-Lambda device
+    of the ZUP series with a different type of connection (parallel/serial) of
+    the nth number of devices.
+    '''
     _buf = None
     _conn = {}  # Словарь {port: serial.Serial}
     _instance_counts = {}  # Словарь {port: количество экземпляров}
 
     def __init__(self, port, address, baudrate=9600, timeout=1, delay=0.015):
+        # Инициализация параметров устройства
         self.port = f'COM{port}'
         self.address = address
         self.baudrate = baudrate
@@ -14,14 +20,15 @@ class ZupDevice:
         self.delay = delay
         self.format = [':', '', ';']
 
+        # Проверка подключения устройства
         self._connection()
         self.status = self.check_link()
 
-    def check_link(self):
-            return True if self.query('MDL?') else False
+    def check_link(self) -> bool:
+        """Assessment of class performance through feedback"""
+        return True if self.query('MDL?') else False
 
-
-    def _connection(self):
+    def _connection(self) -> None:
         try:
             if self.port not in ZupDevice._conn:
                 ZupDevice._conn[self.port] = serial.Serial(
@@ -33,7 +40,7 @@ class ZupDevice:
         except serial.SerialException as e:
             raise ConnectionError(f"Failed to connect to {self.port}: {e}")
 
-    def _f_command(self, command:str):
+    def _f_command(self, command:str) -> str:
         c = '{start}' + command.strip().replace(' ', '{mid}') + '{end}'
         if c.count('{') == 3:
             return c.format(start=self.format[0],
@@ -43,11 +50,11 @@ class ZupDevice:
             return c.format(start=self.format[0],
                             end=self.format[2])
 
-    def _update_buf(self):
+    def _update_buf(self) -> None:
         ZupDevice._conn[self.port].write(f':ADR{str(self.address).zfill(2)};'.encode())
         sleep(self.delay)
 
-    def write(self, command:str):
+    def write(self, command:str) -> None:
         if ZupDevice._buf != self.address:
             self._update_buf()
 
@@ -55,10 +62,10 @@ class ZupDevice:
         ZupDevice._conn[self.port].write(com.encode())
         sleep(self.delay)
 
-    def read(self):
+    def read(self) -> str:
         return ZupDevice._conn[self.port].readline().decode()
 
-    def query(self, command):
+    def query(self, command) -> str:
         self.write(command)
         return self.read().strip()
 
@@ -70,7 +77,7 @@ class ZupDevice:
 
     @classmethod
     def close_connection(cls, port):
-        """Закрывает общее соединение."""
+        """Close the shared connection."""
         if port in cls._conn:
             cls._conn[port].close()
             del cls._conn[port]
@@ -91,7 +98,7 @@ class GenesysDevice:
         self.status = self.check_link()
         self.connect = self._connection()
 
-    def check_link(self):
+    def check_link(self) -> bool:
         return True if self.query('*IDN?') else False
 
     def _connection(self):
@@ -196,7 +203,7 @@ class TestDevice:
         self.status = self.check_link()
 # ----------------------------- Выбор команды ------------------------
     def check_link(self):
-            return True if self.query("Тут нужно выбрать команду") else False
+            return True if self.query("0") else False
 # --------------------------------------------------------------------
     def _connection(self):
         try:
@@ -217,8 +224,10 @@ class TestDevice:
         self.write(command)
         return self.read()
 
-def get_device(model:str):
-
+def get_device(model:str) -> type | None:
+    """
+    The main window with initialization of all frames
+    """
     data = {
         'tdk-lambda zup': ZupDevice,
         'agilent n3300': N3300,
@@ -229,9 +238,8 @@ def get_device(model:str):
     for mod_dev in data.keys():
         if mod_dev in mdl:
             return data[mod_dev]
-
     return None
-    # return data[mdl] if mdl in data.keys() else None
+
 
 if __name__ == '__main__':
     # ------------------Рабочая--------------------

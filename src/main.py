@@ -2,16 +2,16 @@ import tkinter as tk
 from tkinter import messagebox
 from tkinter import scrolledtext, ttk
 
-from Core import Backend
+from Core import Link
 
 
 class Commands(tk.Frame):
     '''
-    Данный класс служит Frame-ом для отображения списка кнопок для запуска команд
+    The class for displaying buttons to run a specific test on a test bench.
     '''
-    def __init__(self, parent, backend:Backend, *args, **kw):
+    def __init__(self, parent, link:Link, *args, **kw):
         tk.Frame.__init__(self, parent, *args,  **kw)
-        self.backend = backend
+        self.backend = link
         self.parent = parent
 
         self.vscrollbar = tk.Scrollbar(self, orient=tk.VERTICAL)
@@ -39,16 +39,17 @@ class Commands(tk.Frame):
                             )
             btn.pack(padx=10, pady=5, side=tk.TOP)
 
-        def _configure_interior(event):
+        def _configure_interior(event) -> None:
             # update the scrollbars to match the size of the inner frame
             size = (interior.winfo_reqwidth(), interior.winfo_reqheight())
             self.canvas.config(scrollregion="0 0 %s %s" % size)
             if interior.winfo_reqwidth() != self.canvas.winfo_width():
                 self.canvas.config(width=interior.winfo_reqwidth())
 
-        def _configure_canvas(event):
+        def _configure_canvas(event) -> None:
             if interior.winfo_reqwidth() != self.canvas.winfo_width():
-                self.canvas.itemconfigure(interior_id, width=self.canvas.winfo_width())
+                self.canvas.itemconfigure(interior_id,
+                                          width=self.canvas.winfo_width())
 
         self.interior.bind('<Configure>', _configure_interior)
         self.canvas.bind('<Configure>', _configure_canvas)
@@ -56,70 +57,62 @@ class Commands(tk.Frame):
         bottom_frame = tk.Frame(self)
         bottom_frame.pack(side='bottom', fill='x')
 
-        self.auto_btn = tk.Button(bottom_frame, height=2, width=20,
-                                  bg="gray99", relief=tk.FLAT,
+        self.auto_btn = tk.Button(bottom_frame, height=2,
+                                  width=20, bg="gray99",
+                                  relief=tk.FLAT, command=self._start_all_commands,
                                   font="Dosis",text="Автоматическое \nтестирование",
-                                  command=self._start_all_commands)
+                                  )
         self.auto_btn.pack(fill='x', padx=5, pady=5)
 
-    def _start_command(self, index_command):
+    def _start_command(self, index_command) -> bool:
+        # Running one command
         return self.backend.command_execution(index_command)
 
-    def _start_all_commands(self):
+    def _start_all_commands(self) -> None:
+        # running all command
         for i in list(range(1, self.backend.value_commands())):
             if not self._start_command(i):
                 break
 
-
-# Класс с frame для подключения устройств
 class Configuration(tk.Toplevel):
     '''
-    Данный класс служит Frame-ом для отображения и изменения конфигураций
-    устройств для подключения по COM портам
+    This class serves as a Frame for displaying and changing configurations
+    of devices for connection via COM ports.
     '''
-    def __init__(self, parent, backend:Backend, *args, **kwargs):
+    def __init__(self, parent, link:Link, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
         self.parent = parent
-        self.backend = backend
-
+        self.backend = link
         self.geometry('400x200')
         self.resizable(False, False)
         self.title("Настройка конфигурации")
-
-        # Конфигурация сетки
         self.grid_columnconfigure(0, weight=1, uniform='col')
         self.grid_columnconfigure(1, weight=1, uniform='col')
         self.grid_columnconfigure(2, weight=1, uniform='col')
 
-        # Заголовки
         headers = ['Модель', 'COM порт', 'Адрес устройства']
         for col, text in enumerate(headers):
             tk.Label(self, text=text, font=('Arial', 10, 'bold'),
                      borderwidth=1, relief='groove', padx=5, pady=5
                      ).grid(row=0, column=col, sticky='nsew', padx=1, pady=1)
 
-        # Список устройств
         self.devices = ['TDK-Lambda Zup (1)', 'TDK-Lambda Zup (2)',
                    'TDK-Lambda Genesys', 'Agilent N3300', 'Test']
 
         self.com_list_widg = []
         self.adr_list_widg = []
 
-        # Создание строк с настройками
         self.entries = []
         for row, device in enumerate(self.devices, start=1):
-            # Метка с названием устройства
             tk.Label(self, text=device, anchor='w',
                      font=('Arial', 9), padx=5
                      ).grid(row=row, column=0, sticky='nsew')
 
-            # Поле для COM порта
             com_entry = ttk.Entry(self, width=15, font=('Arial', 10))
             self.com_list_widg.append(com_entry)
             com_entry.insert(0, self.backend.config[row][1])
             com_entry.grid(row=row, column=1, sticky='nsew', padx=2, pady=2)
 
-            # Поле для адреса устройства
             addr_entry = ttk.Entry(self, width=15, font=('Arial', 10))
             self.adr_list_widg.append(addr_entry)
             addr_entry.insert(0, self.backend.config[row][2])
@@ -127,38 +120,35 @@ class Configuration(tk.Toplevel):
 
             self.entries.append((com_entry, addr_entry))
 
-        # Фрейм для кнопок
         button_frame = ttk.Frame(self)
         button_frame.grid(row=len(self.devices) + 1, column=0, columnspan=3,
                           sticky='se', pady=10, padx=10)
 
-        # Кнопки
         ttk.Button(button_frame, text="Отмена",).pack(side='right', padx=5)
         ttk.Button(button_frame, text="Сохранить", command=self.save_configurate).pack(side='right')
 
-        # Выравнивание строк
         for i in range(1, len(self.devices) + 1):
             self.grid_rowconfigure(i, weight=1, uniform='row')
 
-    def save_configurate(self):
+    def save_configurate(self) -> None:
+        # save new configuration
         data = list(zip([i.get() for i in self.com_list_widg],
                     [i.get() for i in self.adr_list_widg]))
         result = self.backend.update_config(data=data)
 
         if not result:
-            text = 'Вводные данные должны содержать только целые числа от 1 до 32'
+            text = 'Данные должны содержать только целые числа от 1 до 32'
             messagebox.showerror('Ошибка данных', text)
-
 
 class Connection(tk.Frame):
     '''
-    Данный класс служит Frame-ом для отображения подключенных устройств,
-    Что расположены в файлах конфигурации
+    This class serves as a Frame for displaying connected devices that
+    are located in configuration files.
     '''
-    def __init__(self, parent:tk.Tk, backend:Backend, *args, **kwargs):
+    def __init__(self, parent:tk.Tk, link:Link, *args, **kwargs):
         tk.Frame.__init__(self, parent, *args, **kwargs)
         self.parent = parent
-        self.backend = backend
+        self.backend = link
         self.devices = {
             'TDK-Lambda Zup (1)': [tk.StringVar(value="Ошибка")],
             'TDK-Lambda Zup (2)': [tk.StringVar(value="Ошибка")],
@@ -169,16 +159,13 @@ class Connection(tk.Frame):
         for name, status in self.devices.items():
             frame = tk.Frame(self)
             frame.pack(fill='x', pady=2)
-
             tk.Label(frame, text=name,
                      width=20,
                      anchor='w',
                      font=('Arial', 10)).pack(side='left')
-            status_label = tk.Label(frame,
-                                    textvariable=status[0],
-                                     background='red' if status[0].get() == 'Ошибка' else 'green',
-                                     width=10)
-
+            status_label = tk.Label(frame, textvariable=status[0], width=10,
+                                    background='red' if status[0].get() == 'Ошибка' else 'green'
+                                    )
             status_label.pack(side='right', padx=5)
             status.append(status_label)
 
@@ -186,37 +173,36 @@ class Connection(tk.Frame):
         btn_frame.pack(side='bottom', fill='x', padx=5, pady=5)
 
         tk.Button(btn_frame, height=1, width=20, relief=tk.FLAT,
-                        bg="gray99",
-                        font="Dosis", text="Настроить конфигурацию",
+                  bg="gray99", font="Dosis", text="Настроить конфигурацию",
                   command=lambda:self._open_configuration(self.backend)).pack(side='top', fill='x', pady=2)
         tk.Button(btn_frame, height=1, width=20, relief=tk.FLAT,
-                        bg="gray99",
-                        font="Dosis", text="Проверить подключение",
-                        command=self._check_connections).pack(side='top', fill='x', pady=2)
+                  bg="gray99", font="Dosis", text="Проверить подключение",
+                  command=self._check_connections).pack(side='top', fill='x', pady=2)
 
-    def _open_configuration(self, backend):
+    def _open_configuration(self, backend) -> None:
+        # opens the window for update configuration
         self.configuration = Configuration(self.parent, backend)
         self.configuration.grab_set()
         self.configuration.focus_set()
         self.configuration.wait_window()
 
     def _update_status(self, name_dev, status:bool) -> None:
+        # change device status display
         self.devices[name_dev][0].set("ОК" if status else "Ошибка")
         self.devices[name_dev][1].config(background='green' if status else 'red')
 
-    def _check_connections(self):
+    def _check_connections(self) -> None:
+        # Run check
         result_flags = self.backend.check_connection()
         for dev, status in zip(self.devices, result_flags):
             self._update_status(dev, status)
 
-
-
 # Класс фрейма с консолью
 class Console(tk.Frame):
+
     def __init__(self, parent:tk.Tk, *args, **kwargs):
         tk.Frame.__init__(self, parent, *args, **kwargs)
         self.parent = parent
-
         self.console_font = ('DejaVu Sans Mono', 10)
         self.console = scrolledtext.ScrolledText(self, wrap=tk.WORD,
             font=self.console_font,
@@ -225,48 +211,47 @@ class Console(tk.Frame):
             state="disabled"
         )
         self.console.pack(fill='both', expand=True, padx=5, pady=5)
-
         self.console.insert(tk.INSERT, 'Готов к работе ...\n')
 
     def insert(self, text:str) -> None:
+        # makes the console active and writes data
         self.console.config(state="normal")
         self.console.insert('end', text + '\n')
         self.console.config(state="disabled")
 
 
 class MainApplication(tk.Frame):
-    def __init__(self, parent: tk.Tk, backend:Backend, config_name:str, *args, **kwargs):
+    '''
+    The main window with initialization of all frames
+    '''
+    def __init__(self, parent: tk.Tk,
+                 link: Link, config_name: str,
+                 *args, **kwargs):
         tk.Frame.__init__(self, parent, *args, **kwargs)
         self.parent = parent
-        self.backend = backend
+        self.backend = link
 
-        # Настройка пропорций колонок
         self.parent.grid_columnconfigure(0, weight=33)
         self.parent.grid_columnconfigure(1, weight=25)
         self.parent.grid_columnconfigure(2, weight=42)
         self.parent.grid_rowconfigure(0, weight=1)
 
-        # Создание и размещение фреймов
-
-
         self.conn = Connection(self.parent, self.backend)
-        self.cmd = Commands(self.parent, self.backend)
-
+        self.commands = Commands(self.parent, self.backend)
         self.consl = Console(self.parent)
         self.backend.console = self.consl
 
-
         self.conn.grid(row=0, column=0, sticky='nsew', padx=2, pady=2)
-        self.cmd.grid(row=0, column=1, sticky='nsew', padx=2, pady=2)
+        self.commands.grid(row=0, column=1, sticky='nsew', padx=2, pady=2)
         self.consl.grid(row=0, column=2, sticky='nsew', padx=2, pady=2)
 
 
 def main(name_config='4_1'):
+    # Run script
     config_name = './configs/' + name_config
     root = tk.Tk()
-    MainApplication(root, Backend(config_name), config_name)
+    MainApplication(root, Link(config_name), config_name)
     root.mainloop()
-
 
 if __name__ == "__main__":
     main()
