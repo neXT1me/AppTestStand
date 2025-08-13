@@ -1,9 +1,11 @@
 # 1. Main
 def test(n):
     '''
-
-    :param n:
-    :return:
+    Допустим мы изменили документицию и хотим закинуть ее в dev
+    dev dev
+    dev edv
+    :param n: количество чисел
+    :return: квадрат чисел
     '''
 
     # выше описывается Docs, а ниже function
