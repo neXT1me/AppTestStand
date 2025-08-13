@@ -1,7 +1,8 @@
 # 1. Main
-def test():
+def test(n):
     """
     step 3: writing docs
     :return: list square numbers
     """
-    pass
+    # 2. dev_2: Тут мы описываем функциональность и пушим в main
+    return [i**2 for i in range(n)]
