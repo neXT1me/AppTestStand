@@ -1,3 +1,9 @@
 # 1. Main
 def test(n):
-    pass
+    '''
+
+    :param n:
+    :return:
+    '''
+
+    # выше описывается Docs, а ниже function
